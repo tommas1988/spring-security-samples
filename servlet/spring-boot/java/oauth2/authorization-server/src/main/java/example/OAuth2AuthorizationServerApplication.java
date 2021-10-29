@@ -18,6 +18,7 @@ package example;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 
 /**
  * OAuth Authorization Server Application.
@@ -25,6 +26,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author Steve Riesenberg
  */
 @SpringBootApplication
+@EnableWebSecurity(debug = true)
 public class OAuth2AuthorizationServerApplication {
 
 	public static void main(String[] args) {

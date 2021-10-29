@@ -28,6 +28,7 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 
+import login.token.JwtAuthenticationConfigurer;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -64,6 +65,7 @@ public class OAuth2AuthorizationServerSecurityConfiguration {
 	@Order(1)
 	public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
 		OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
+		http.apply(new JwtAuthenticationConfigurer<>());
 		return http.formLogin(Customizer.withDefaults()).build();
 	}
 
@@ -73,7 +75,8 @@ public class OAuth2AuthorizationServerSecurityConfiguration {
 		// @formatter:off
 		http
 			.authorizeRequests((requests) -> requests.anyRequest().authenticated())
-			.formLogin(Customizer.withDefaults());
+			.formLogin(Customizer.withDefaults())
+			.apply(new JwtAuthenticationConfigurer<>());
 		// @formatter:on
 
 		return http.build();
