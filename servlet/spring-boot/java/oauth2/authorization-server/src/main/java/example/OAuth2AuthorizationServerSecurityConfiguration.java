@@ -28,6 +28,7 @@ import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 
+import configuration.SessionlessWebSecurityConfigurerAdapter;
 import login.token.JwtAuthenticationConfigurer;
 import login.token.JwtAuthenticationSuccessHandler;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -37,6 +38,7 @@ import org.springframework.context.annotation.Role;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -62,30 +64,47 @@ import org.springframework.security.web.util.matcher.*;
  */
 @Configuration
 public class OAuth2AuthorizationServerSecurityConfiguration {
-
-	@Bean
-	@Order(1)
-	public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
-		OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
-		http.apply(new JwtAuthenticationConfigurer<>());
-		return http.formLogin(Customizer.withDefaults()).build();
+	@Configuration
+	@Order(100)
+	public static class AuthorizationServerSecurityConfiguration extends SessionlessWebSecurityConfigurerAdapter {
+		@Override
+		protected void configure(HttpSecurity http) throws Exception {
+			OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
+			http.apply(new JwtAuthenticationConfigurer<>());
+			http.formLogin(Customizer.withDefaults());
+		}
 	}
 
-	@Bean
-	@Order(2)
-	public SecurityFilterChain standardSecurityFilterChain(HttpSecurity http) throws Exception {
-		// @formatter:off
-		http
-			.authorizeRequests((requests) -> requests.requestMatchers(this.anyRequestButFavicon()).authenticated())
-			.formLogin(configurer -> configurer.successHandler(new JwtAuthenticationSuccessHandler()))
-			.apply(new JwtAuthenticationConfigurer<>());
-		// @formatter:on
+	@Configuration
+	@Order(101)
+	public static class StandardSecurityConfiguration extends SessionlessWebSecurityConfigurerAdapter {
+		@Override
+		protected void configure(HttpSecurity http) throws Exception {
+			// @formatter:off
+			http
+					.authorizeRequests((requests) -> requests.requestMatchers(this.anyRequestButFavicon()).authenticated())
+					.formLogin(configurer -> configurer.successHandler(new JwtAuthenticationSuccessHandler()))
+					.apply(new JwtAuthenticationConfigurer<>());
+			// @formatter:on
+		}
 
-		return http.build();
-	}
+		// TODO: should be configured in SessionlessWebSecurityConfigurerAdapter
+		private RequestMatcher anyRequestButFavicon() {
+			return new AndRequestMatcher(new NegatedRequestMatcher(new AntPathRequestMatcher("/favicon.ico")), AnyRequestMatcher.INSTANCE);
+		}
 
-	private RequestMatcher anyRequestButFavicon() {
-		return new AndRequestMatcher(new NegatedRequestMatcher(new AntPathRequestMatcher("/favicon.ico")), AnyRequestMatcher.INSTANCE);
+		@Override
+		protected UserDetailsService userDetailsService() {
+			// @formatter:off
+			UserDetails userDetails = User.withDefaultPasswordEncoder()
+					.username("user")
+					.password("password")
+					.roles("USER")
+					.build();
+			// @formatter:on
+
+			return new InMemoryUserDetailsManager(userDetails);
+		}
 	}
 
 	@Bean
@@ -138,19 +157,6 @@ public class OAuth2AuthorizationServerSecurityConfiguration {
 	@Bean
 	public ProviderSettings providerSettings() {
 		return ProviderSettings.builder().issuer("http://localhost:9000").build();
-	}
-
-	@Bean
-	public UserDetailsService userDetailsService() {
-		// @formatter:off
-		UserDetails userDetails = User.withDefaultPasswordEncoder()
-				.username("user")
-				.password("password")
-				.roles("USER")
-				.build();
-		// @formatter:on
-
-		return new InMemoryUserDetailsManager(userDetails);
 	}
 
 	@Bean

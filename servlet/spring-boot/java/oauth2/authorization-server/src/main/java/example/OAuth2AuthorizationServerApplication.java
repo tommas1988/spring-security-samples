@@ -28,7 +28,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
  * @author Steve Riesenberg
  */
 @SpringBootApplication
-@Import(SessionlessHttpSecurityConfiguration.class)
 public class OAuth2AuthorizationServerApplication {
 
 	public static void main(String[] args) {
