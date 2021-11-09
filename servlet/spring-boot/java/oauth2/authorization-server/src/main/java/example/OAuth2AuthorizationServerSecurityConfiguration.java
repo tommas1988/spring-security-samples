@@ -29,6 +29,7 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 
 import login.token.JwtAuthenticationConfigurer;
+import login.token.JwtAuthenticationSuccessHandler;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -52,6 +53,7 @@ import org.springframework.security.oauth2.server.authorization.config.ClientSet
 import org.springframework.security.oauth2.server.authorization.config.ProviderSettings;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.util.matcher.*;
 
 /**
  * OAuth Authorization Server Configuration.
@@ -74,12 +76,16 @@ public class OAuth2AuthorizationServerSecurityConfiguration {
 	public SecurityFilterChain standardSecurityFilterChain(HttpSecurity http) throws Exception {
 		// @formatter:off
 		http
-			.authorizeRequests((requests) -> requests.anyRequest().authenticated())
-			.formLogin(Customizer.withDefaults())
+			.authorizeRequests((requests) -> requests.requestMatchers(this.anyRequestButFavicon()).authenticated())
+			.formLogin(configurer -> configurer.successHandler(new JwtAuthenticationSuccessHandler()))
 			.apply(new JwtAuthenticationConfigurer<>());
 		// @formatter:on
 
 		return http.build();
+	}
+
+	private RequestMatcher anyRequestButFavicon() {
+		return new AndRequestMatcher(new NegatedRequestMatcher(new AntPathRequestMatcher("/favicon.ico")), AnyRequestMatcher.INSTANCE);
 	}
 
 	@Bean
