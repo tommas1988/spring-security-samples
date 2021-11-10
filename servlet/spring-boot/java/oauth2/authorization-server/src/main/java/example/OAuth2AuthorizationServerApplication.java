@@ -16,8 +16,10 @@
 
 package example;
 
+import configuration.SessionlessHttpSecurityConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 
 /**
@@ -26,7 +28,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
  * @author Steve Riesenberg
  */
 @SpringBootApplication
-@EnableWebSecurity(debug = true)
+@Import(SessionlessHttpSecurityConfiguration.class)
 public class OAuth2AuthorizationServerApplication {
 
 	public static void main(String[] args) {
