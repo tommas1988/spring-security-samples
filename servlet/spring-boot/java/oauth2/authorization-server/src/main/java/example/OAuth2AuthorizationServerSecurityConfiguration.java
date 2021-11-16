@@ -37,12 +37,15 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
@@ -63,15 +66,16 @@ import org.springframework.security.web.util.matcher.*;
  * @author Steve Riesenberg
  */
 @Configuration
+@EnableWebSecurity(debug = true)
 public class OAuth2AuthorizationServerSecurityConfiguration {
 	@Configuration
 	@Order(100)
 	public static class AuthorizationServerSecurityConfiguration extends SessionlessWebSecurityConfigurerAdapter {
 		@Override
-		protected void configure(HttpSecurity http) throws Exception {
+		protected void doConfigure(HttpSecurity http) throws Exception {
 			OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
 			http.apply(new JwtAuthenticationConfigurer<>());
-			http.formLogin(Customizer.withDefaults());
+			//http.formLogin(configurer -> configurer.failureHandler(authenticationFailureHandler()));
 		}
 	}
 
@@ -79,31 +83,25 @@ public class OAuth2AuthorizationServerSecurityConfiguration {
 	@Order(101)
 	public static class StandardSecurityConfiguration extends SessionlessWebSecurityConfigurerAdapter {
 		@Override
-		protected void configure(HttpSecurity http) throws Exception {
+		protected void doConfigure(HttpSecurity http) throws Exception {
 			// @formatter:off
 			http
-					.authorizeRequests((requests) -> requests.requestMatchers(this.anyRequestButFavicon()).authenticated())
-					.formLogin(configurer -> configurer.successHandler(new JwtAuthenticationSuccessHandler()))
+					.authorizeRequests((requests) -> requests.anyRequest().authenticated())
+					.formLogin(configurer -> {
+						configurer.successHandler(new JwtAuthenticationSuccessHandler())
+								.failureHandler(authenticationFailureHandler());
+					})
 					.apply(new JwtAuthenticationConfigurer<>());
 			// @formatter:on
 		}
 
-		// TODO: should be configured in SessionlessWebSecurityConfigurerAdapter
-		private RequestMatcher anyRequestButFavicon() {
-			return new AndRequestMatcher(new NegatedRequestMatcher(new AntPathRequestMatcher("/favicon.ico")), AnyRequestMatcher.INSTANCE);
-		}
-
 		@Override
-		protected UserDetailsService userDetailsService() {
-			// @formatter:off
-			UserDetails userDetails = User.withDefaultPasswordEncoder()
-					.username("user")
-					.password("password")
-					.roles("USER")
-					.build();
-			// @formatter:on
-
-			return new InMemoryUserDetailsManager(userDetails);
+		protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+			auth.inMemoryAuthentication()
+					.passwordEncoder(new BCryptPasswordEncoder())
+					.withUser("user")
+					.password("$2a$10$QuNxZVl.0GRqbbD3uT9R3OvXzli2nuDHaD9msFGjR4QhemlsJ/tE6") // password
+					.roles("USER");
 		}
 	}
 
